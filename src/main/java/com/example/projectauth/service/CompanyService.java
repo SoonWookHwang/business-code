@@ -17,6 +17,10 @@ public class CompanyService {
 
     private final CompanyRepository companyRepository;
 
+    public void putDataforTest(Company company){
+        companyRepository.save(company);
+    }
+
     public CompanyResponseDto findByCompanyName(String companyName) {
         List<Company> foundCompanies = companyRepository.findAllByCompanyNameContains(companyName);
         if (foundCompanies.isEmpty()) {

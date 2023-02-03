@@ -1,13 +1,21 @@
 package com.example.projectauth.model;
 
+import com.example.projectauth.dto.CompanyResponseDto;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.Arrays;
+import java.util.Collections;
 
 @Entity
 @Getter
 @NoArgsConstructor
 @Table(name = "company")
+@AllArgsConstructor // 테스트용
+@Builder  // 테스트용
 public class Company {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,10 +44,10 @@ public class Company {
     private String clasfiCorporation;
 
     @Column  //본사/지사 구분 1= 본사 2= 지사
-    private int headOrBranch;
+    private String headOrBranch;
 
     @Column  //법인형태
-    private String CorpType;
+    private String corpType;
 
     @Column  //세무서
     private String taxOffice;
@@ -85,4 +93,11 @@ public class Company {
 
     @Column  /// 결산월
     private String settlementMonth;
+
+
+    // 테스트용
+    public CompanyResponseDto companyToResponsDtoforTest(Company company){
+        return CompanyResponseDto.builder().companyList(Collections.singletonList(company)).build();
+    }
+
 }
