@@ -8,16 +8,14 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import java.net.http.HttpRequest;
-
 @Configuration
-@EnableWebSecurity
+@EnableWebSecurity(debug = true)
 //@EnableGlobalMethodSecurity(
 //        securedEnabled = true
 //)
@@ -35,38 +33,27 @@ public class WebSecurityConfig {
     }
 
     @Bean
-    protected SecurityFilterChain configure(HttpSecurity http) throws Exception {
+    protected SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf().disable();
-        http.headers().frameOptions().disable();
-        http.authorizeHttpRequests().anyRequest().authenticated()
+        http.authorizeHttpRequests().requestMatchers("/h2-console/*").permitAll();
+        http.headers(headers -> headers
+                .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin));
+        //-> http.headers(headers->frame).frameOptions().disable();
+        http.authorizeHttpRequests()
+                .requestMatchers("/user/**","/h2-console/**")
+                .permitAll()
+                .anyRequest()
+                .authenticated()
                 .and()
-//                .mvcMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-//                .antMatchers("/api/**").permitAll()
-//                .antMatchers("/posts/**").permitAll()
-//                .antMatchers("/js/**").permitAll()
-//                .antMatchers("/scripts/**").permitAll()
-//                .antMatchers("/css/**").permitAll()
-//                .antMatchers("/users/**").permitAll()
-//                .antMatchers("/h2-console/**").permitAll()
-//                .anyRequest().authenticated()
-//                .and()
                 // 세션인증 사용하지 않음
-                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .sessionManagement()
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
                 // 토큰인증 먼저 실행
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
                         UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
-    @Bean
-    public WebSecurityCustomizer webSecurityCustomizer() {
-        return (web) ->
-                web
-                        .ignoring()
-                        .requestMatchers("/h2-console/**")
-                        .anyRequest();
-    }
-
 
     public WebSecurityConfig(JwtTokenProvider jwtTokenProvider) {
         this.jwtTokenProvider = jwtTokenProvider;

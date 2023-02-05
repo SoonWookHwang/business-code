@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
-import java.util.Map;
+
 
 @RestController
 @RequiredArgsConstructor
@@ -21,7 +21,6 @@ import java.util.Map;
 @Slf4j
 public class CompanyController {
     private final CompanyService companyService;
-
 
     @GetMapping("/api/company")
     public CommonResponse<?> findDataWithParam(@RequestParam HashMap<String,String> paramMap){

@@ -9,6 +9,7 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
@@ -18,19 +19,23 @@ import java.io.IOException;
 
 
 @RequiredArgsConstructor
+@Slf4j
 public class JwtAuthenticationFilter extends GenericFilterBean {
     private final JwtTokenProvider jwtTokenProvider;
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
         // 헤더에서 JWT 를 받아온다.
+        log.info("jwtauthenticationFilter 진입");
         String token = jwtTokenProvider.resolveToken((HttpServletRequest) request);
+        log.info("리퀘스트에 담긴 토큰 = "+ token);
         // 저장된 JWT 에서 "Bearer " 문자열 부분 제거하고 토큰값만 남김
         if (StringUtils.hasText(token) && token.startsWith("Bearer ")) {
             token = token.substring(7);
         }
         // 유효한 토큰인지 확인한다.
         if (token != null && jwtTokenProvider.validateToken(token)) {
+            log.info("토큰 유효성 검사 시작");
             try {
                 // 토큰이 유효하면 토큰으로부터 유저 정보를 받아온다.
                 Authentication authentication = jwtTokenProvider.getAuthentication(token);

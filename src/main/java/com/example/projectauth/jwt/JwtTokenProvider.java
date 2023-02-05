@@ -7,6 +7,7 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -14,17 +15,18 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 
-import java.util.Base64;
-import java.util.Date;
+import java.util.*;
 
 @RequiredArgsConstructor
 @Component
+@Slf4j
 public class JwtTokenProvider {
 
     private String type = "Bearer ";
 
-    @Value("K7kjHSF345h345S86F3A2erGB98iWIad")
+    @Value("${security.jwt.token.secret-key}")
     private String secretKey;
+
 
     // 토큰 유효시간 15분 설정 (1000L = 1CH, 1000L * 60 = 1분)
     private static final long TOKEN_VALID_TIME = 1000L * 60 * 15;
@@ -34,6 +36,7 @@ public class JwtTokenProvider {
     // 객체 초기화, secretKey 를 Base64로 인코딩한다.
     @PostConstruct
     protected void init() {
+        log.info(secretKey);
         secretKey = Base64.getEncoder().encodeToString(secretKey.getBytes());
     }
 
@@ -62,6 +65,11 @@ public class JwtTokenProvider {
 
     // Request 의 Header 에서 token 값을 가져온다. "X-AUTH-TOKEN" : "TOKEN 값"
     public String resolveToken(HttpServletRequest request) {
+        List<String> list = new ArrayList<>();
+        request.getHeaderNames().asIterator().forEachRemaining(list::add);
+        for (String a : list) {
+            log.info("리퀘스트에 담긴 헤더값 = " + a);
+        }
         return request.getHeader("Authorization");
     }
 
