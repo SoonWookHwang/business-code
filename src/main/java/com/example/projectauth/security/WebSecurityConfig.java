@@ -54,6 +54,14 @@ public class WebSecurityConfig {
                         UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
+//    @Bean
+//    public WebSecurityCustomizer webSecurityCustomizer() {
+//        return (web) ->
+//                web
+//                        .ignoring()
+//                        .requestMatchers("/h2-console/**")
+//                        .anyRequest();
+//    }
 
     public WebSecurityConfig(JwtTokenProvider jwtTokenProvider) {
         this.jwtTokenProvider = jwtTokenProvider;

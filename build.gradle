@@ -30,7 +30,8 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
-    compileOnly 'io.jsonwebtoken:jjwt:0.9.1'
+    implementation group: 'io.jsonwebtoken', name: 'jjwt', version: '0.9.1'
+    implementation group: 'javax.xml.bind', name: 'jaxb-api', version: '2.3.1'
 
     //javax.xml.bind.DatatypeConverter 를 찾지 못하면서 발생한 에러
     //JDK 11 이 되면서 Java EE와 CORBA Module이 제거되었다고 한다.(http://openjdk.java.net/jeps/320)

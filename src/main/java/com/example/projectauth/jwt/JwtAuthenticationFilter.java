@@ -22,6 +22,8 @@ import java.io.IOException;
 @Slf4j
 public class JwtAuthenticationFilter extends GenericFilterBean {
     private final JwtTokenProvider jwtTokenProvider;
+    public static final String AUTHORIZATION_HEADER = "Authorization";
+    public static final String BEARER_PREFIX = "Bearer";
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
@@ -30,8 +32,8 @@ public class JwtAuthenticationFilter extends GenericFilterBean {
         String token = jwtTokenProvider.resolveToken((HttpServletRequest) request);
         log.info("리퀘스트에 담긴 토큰 = "+ token);
         // 저장된 JWT 에서 "Bearer " 문자열 부분 제거하고 토큰값만 남김
-        if (StringUtils.hasText(token) && token.startsWith("Bearer ")) {
-            token = token.substring(7);
+        if (StringUtils.hasText(token) && token.startsWith(BEARER_PREFIX)) {
+            token = token.substring(6);
         }
         // 유효한 토큰인지 확인한다.
         if (token != null && jwtTokenProvider.validateToken(token)) {
@@ -41,6 +43,7 @@ public class JwtAuthenticationFilter extends GenericFilterBean {
                 Authentication authentication = jwtTokenProvider.getAuthentication(token);
                 // SecurityContext 에 Authentication 객체를 저장한다.
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+                log.info("Authentication 이름 ="+ authentication.getName());
             } catch (IllegalArgumentException e) {
                 logger.error("an error occured during getting username from token", e);
                 throw new JwtException("유효하지 않은 토큰");

@@ -3,27 +3,40 @@ package com.example.projectauth.service;
 import com.example.projectauth.dto.LoginRequestDto;
 import com.example.projectauth.dto.LoginResponseDto;
 import com.example.projectauth.dto.SignupRequestDto;
+import com.example.projectauth.dto.TokenDto;
 import com.example.projectauth.error.exception.EntityNotFoundException;
 import com.example.projectauth.error.exception.ErrorCode;
 import com.example.projectauth.error.exception.InvalidValueException;
 import com.example.projectauth.jwt.JwtTokenProvider;
 import com.example.projectauth.model.Member;
+import com.example.projectauth.model.RefreshToken;
 import com.example.projectauth.repository.MemberRepository;
+import com.example.projectauth.repository.RefreshTokenRepository;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MemberService {
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final MemberRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+
+    private final AuthenticationManagerBuilder authenticationManagerBuilder;
 
 
     public void registerUser(SignupRequestDto requestDto/*, MultipartFile filePath*/) {
@@ -38,11 +51,6 @@ public class MemberService {
             throw new InvalidValueException(ErrorCode.USERNAME_DUPLICATION);
         }
 
-//        String img = "";
-//        if (filePath != null) {
-//            img = s3Service.uploadImg(filePath);
-//        }
-
         //회원가입 요구형식 처리
         if (username.length() < 4) {
             throw new InvalidValueException(ErrorCode.INVALID_INPUT_USERNAME);
@@ -52,13 +60,11 @@ public class MemberService {
 //            throw new InvalidValueException(ErrorCode.NOTEQUAL_INPUT_PASSWORD);
         } else if (password.length() < 4) {
             throw new InvalidValueException(ErrorCode.INVALID_PASSWORD);
-//        } else if (nickname.length() < 2) {
-//            throw new InvalidValueException(ErrorCode.INVALID_INPUT_NICKNAME);
         }
         userRepository.save(new Member(username, passwordEncoder.encode(password)));
     }
 
-    public String login(LoginRequestDto loginRequestDto) {
+    public TokenDto login(LoginRequestDto loginRequestDto) {
         String username = loginRequestDto.getUsername();
         Member member = userRepository.findByUsername(username)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.NOTFOUND_USER));
@@ -66,21 +72,20 @@ public class MemberService {
         if (!passwordEncoder.matches(loginRequestDto.getPassword(), member.getPassword())) {
             throw new InvalidValueException(ErrorCode.LOGIN_INPUT_INVALID);
         }
+        TokenDto tokens = jwtTokenProvider.createToken(member.getUsername());
 
-        return jwtTokenProvider.createToken(username);
+        RefreshToken refreshToken = RefreshToken.builder()
+                .key(loginRequestDto.getUsername())
+                .value(tokens.getRefreshToken())
+                .build();
+
+        refreshTokenRepository.save(refreshToken);
+        return tokens;
     }
 
     //현재 SecurityContext에 있는 유저 정보 가져오기기
     @Transactional
     public LoginResponseDto getMyInfo() {
-        // SecurityContext 에 유저 정보가 저장되는 시점
-        // Request 가 들어올 때 JwtFilter 의 doFilter 에서 저장
-
-        //JwtFilter 에서 SecurityContext 에 세팅한 유저 정보를 꺼냅니다.
-        //유저네임으로 찾음 -> 코멘트/리코멘트 생성 시에 사제
-        //SecurityContext 는 ThreadLocal 에 사용자의 정보를 저장합니다.
-
-        //저장된 유저 정보
         final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         //유저 정보 있는지 확인
         if (authentication == null || authentication.getName() == null) {
@@ -90,5 +95,38 @@ public class MemberService {
         return userRepository.findByUsername(authentication.getName())
                 .map(LoginResponseDto::of)
                 .orElseThrow(() -> new RuntimeException("로그인 유저 정보가 없습니다"));
+    }
+
+    @Transactional
+    public TokenDto reissue(TokenDto requestDto) {
+        // 1. Refresh Token 검증
+        if (!jwtTokenProvider.validateToken(requestDto.getRefreshToken())) {
+            throw new RuntimeException("Refresh Token 이 유효하지 않습니다.");
+        }
+
+        // 2. Access Token 에서 User ID 가져오기
+        Authentication authentication = jwtTokenProvider.getAuthentication(requestDto.getAccessToken());
+
+        // 3. 저장소에서 User ID 를 기반으로 Refresh Token 값 가져옴
+        RefreshToken refreshToken = refreshTokenRepository.findByKey(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("로그아웃 된 사용자입니다."));
+        log.info("Refresh Token의 authentication객체에 저장된 이름="+authentication.getName());
+
+        // 4. Refresh Token 일치하는지 검사
+        if (!refreshToken.getValue().equals(requestDto.getRefreshToken())) {
+            throw new RuntimeException("토큰의 유저 정보가 일치하지 않습니다.");
+        }
+
+        // 5. 새로운 토큰 생성
+        TokenDto tokenDto = TokenDto.builder()
+                .accessToken(jwtTokenProvider.createAccessToken(authentication.getName()))
+                .build();
+
+        // 6. 저장소 정보 업데이트
+        RefreshToken newRefreshToken = refreshToken.updateValue(tokenDto.getRefreshToken());
+        refreshTokenRepository.save(newRefreshToken);
+
+        // 토큰 발급
+        return tokenDto;
     }
 }

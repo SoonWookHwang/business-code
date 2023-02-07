@@ -10,6 +10,5 @@ public interface CompanyRepository extends JpaRepository<Company,Long> {
 
     List<Company> findAllByCompanyNameContains(String param);
     Optional<Company> findByCompanyRegistNum(String param);
-
     List<Company> findByMainProductContains(String param);
 }
