@@ -4,7 +4,6 @@ package com.example.projectauth.controller;
 import com.example.projectauth.dto.LoginRequestDto;
 import com.example.projectauth.dto.SignupRequestDto;
 import com.example.projectauth.dto.TokenDto;
-import com.example.projectauth.model.Member;
 import com.example.projectauth.response.ApiUtils;
 import com.example.projectauth.response.CommonResponse;
 import com.example.projectauth.service.MemberService;
@@ -13,7 +12,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,8 +40,8 @@ public class MemberController {
     public CommonResponse<?> login(@RequestBody LoginRequestDto requestDto, HttpServletResponse response) {
         TokenDto tokens = memberService.login(requestDto);
 
-        response.setHeader("X-AUTH-TOKEN", tokens.getAccessToken());
-        Cookie cookie = new Cookie("X-AUTH-TOKEN", tokens.getAccessToken());
+        response.setHeader("Authorization", tokens.getAccessToken());
+        Cookie cookie = new Cookie("Authorization", tokens.getAccessToken());
         cookie.setPath("/");
         cookie.setHttpOnly(true);
         cookie.setSecure(true);

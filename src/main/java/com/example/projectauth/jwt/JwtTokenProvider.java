@@ -1,7 +1,6 @@
 package com.example.projectauth.jwt;
 
 import com.example.projectauth.dto.TokenDto;
-import com.example.projectauth.repository.RefreshTokenRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
@@ -19,10 +18,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.WebUtils;
 
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
-import java.util.List;
 
 @RequiredArgsConstructor
 @Component
@@ -87,12 +84,6 @@ public class JwtTokenProvider {
                 .refreshToken(refreshToken)
                 .build();
     }
-
-    // JWT 토큰에서 인증 정보 조회
-//    public Authentication getAuthentication(String token) {
-//        UserDetails userDetails = userDetailsService.loadUserByUsername(getUserPk(token));
-//        return new UsernamePasswordAuthenticationToken(userDetails, "", userDetails.getAuthorities());
-//    }
     public Authentication getAuthentication(String token) {
         UserDetails userDetails = userDetailsService.loadUserByUsername(this.getUserPk(token));
         return new UsernamePasswordAuthenticationToken(userDetails, "", userDetails.getAuthorities());
@@ -102,21 +93,11 @@ public class JwtTokenProvider {
     private String getUserPk(String token) {
         return Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token).getBody().getSubject();
     }
-
-    // Request 의 Header 에서 token 값을 가져온다. "X-AUTH-TOKEN" : "TOKEN 값"
-//    public String resolveToken(HttpServletRequest request) {
-//        List<String> list = new ArrayList<>();
-//        request.getHeaderNames().asIterator().forEachRemaining(list::add);
-//        for (String a : list) {
-//            log.info("리퀘스트에 담긴 헤더값 = " + a);
-//        }
-//        log.info("토큰 분석 진입");
-//        return request.getHeader("Authorization");
-//    }
     public String resolveToken(HttpServletRequest request) {
         String token = null;
         Cookie cookie = WebUtils.getCookie(request, "Authorization");
-        if(cookie != null) token = cookie.getValue();
+        if(cookie != null) {token = cookie.getValue();}
+        log.info("ResolveToken 쿠키에 담긴 토큰 ="+ token);
         return token;
     }
 

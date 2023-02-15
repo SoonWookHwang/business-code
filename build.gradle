@@ -33,6 +33,9 @@ dependencies {
     implementation group: 'io.jsonwebtoken', name: 'jjwt', version: '0.9.1'
     implementation group: 'javax.xml.bind', name: 'jaxb-api', version: '2.3.1'
 
+    //AOP dependency
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+
     //javax.xml.bind.DatatypeConverter 를 찾지 못하면서 발생한 에러
     //JDK 11 이 되면서 Java EE와 CORBA Module이 제거되었다고 한다.(http://openjdk.java.net/jeps/320)
     //base64Codec.java 파일이 javax.xml.bind.DatatypeConverter을 리턴하고 있었는데 여기서 에러가 발생한 것이었다.
