@@ -7,7 +7,6 @@ import com.example.projectauth.dto.TokenDto;
 import com.example.projectauth.response.ApiUtils;
 import com.example.projectauth.response.CommonResponse;
 import com.example.projectauth.service.MemberService;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,23 +28,18 @@ public class MemberController {
         memberService.registerUser(requestDto/*,img*/);
         return ApiUtils.success(201, "회원가입에 성공하였습니다.");
     }
-
-//    @PostMapping("/login")
-//    public CommonResponse<?> login(@RequestBody LoginRequestDto loginRequestDto) {
-//        log.info("로그인 컨트롤러 진입");
-//        TokenDto token = memberService.login(loginRequestDto);
-//        return ApiUtils.success(HttpStatus.OK.value(), token);
-//    }
     @PostMapping("/login")
     public CommonResponse<?> login(@RequestBody LoginRequestDto requestDto, HttpServletResponse response) {
         TokenDto tokens = memberService.login(requestDto);
+        log.info("엑세스토큰="+ tokens.getAccessToken());
+        log.info("리프레쉬토큰="+ tokens.getRefreshToken());
 
-        response.setHeader("Authorization", tokens.getAccessToken());
-        Cookie cookie = new Cookie("Authorization", tokens.getAccessToken());
-        cookie.setPath("/");
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        response.addCookie(cookie);
+        response.setHeader("WWW-Authenticate", tokens.getAccessToken());
+//        Cookie cookie = new Cookie("X-AUTH-TOKEN", tokens.getAccessToken());
+//        cookie.setPath("/");
+//        cookie.setHttpOnly(true);
+//        cookie.setSecure(true);
+//        response.addCookie(cookie);
 
         return ApiUtils.success(HttpStatus.OK.value(), tokens);
     }

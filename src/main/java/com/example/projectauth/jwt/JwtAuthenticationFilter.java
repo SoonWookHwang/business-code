@@ -23,7 +23,7 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends GenericFilterBean {
     private final JwtTokenProvider jwtTokenProvider;
     public static final String AUTHORIZATION_HEADER = "Authorization";
-    public static final String BEARER_PREFIX = "Bearer";
+    public static final String BEARER_PREFIX = "Bearer ";
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
@@ -33,7 +33,7 @@ public class JwtAuthenticationFilter extends GenericFilterBean {
         log.info("리퀘스트에 담긴 토큰 = "+ token);
         // 저장된 JWT 에서 "Bearer " 문자열 부분 제거하고 토큰값만 남김
         if (StringUtils.hasText(token) && token.startsWith(BEARER_PREFIX)) {
-            token = token.substring(6);
+            token = token.substring(7);
         }
         // 유효한 토큰인지 확인한다.
         if (token != null && jwtTokenProvider.validateToken(token)) {

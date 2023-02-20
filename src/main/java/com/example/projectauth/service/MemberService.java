@@ -12,18 +12,13 @@ import com.example.projectauth.model.Member;
 import com.example.projectauth.model.RefreshToken;
 import com.example.projectauth.repository.MemberRepository;
 import com.example.projectauth.repository.RefreshTokenRepository;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.regex.Pattern;
 
@@ -36,7 +31,6 @@ public class MemberService {
     private final MemberRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
 
-    private final AuthenticationManagerBuilder authenticationManagerBuilder;
 
 
     public void registerUser(SignupRequestDto requestDto/*, MultipartFile filePath*/) {
@@ -74,12 +68,19 @@ public class MemberService {
         }
         TokenDto tokens = jwtTokenProvider.createToken(member.getUsername());
 
-        RefreshToken refreshToken = RefreshToken.builder()
-                .key(loginRequestDto.getUsername())
-                .value(tokens.getRefreshToken())
-                .build();
+        refreshTokenRepository.findByKey(loginRequestDto.getUsername()).ifPresent(
+                newRefreshToken ->
+                        refreshTokenRepository.save(newRefreshToken.updateValue(jwtTokenProvider.createToken(username).getRefreshToken())));
 
-        refreshTokenRepository.save(refreshToken);
+        if(refreshTokenRepository.findByKey(loginRequestDto.getUsername()).isEmpty()) {
+            RefreshToken refreshToken = RefreshToken.builder()
+                    .key(loginRequestDto.getUsername())
+                    .value(tokens.getRefreshToken())
+                    .build();
+            refreshTokenRepository.save(refreshToken);
+        }
+
+
         return tokens;
     }
 
@@ -100,17 +101,25 @@ public class MemberService {
     @Transactional
     public TokenDto reissue(TokenDto requestDto) {
         // 1. Refresh Token 검증
-        if (!jwtTokenProvider.validateToken(requestDto.getRefreshToken())) {
+        if (!jwtTokenProvider.validateRefreshToken(requestDto.getRefreshToken())) {
             throw new RuntimeException("Refresh Token 이 유효하지 않습니다.");
         }
 
         // 2. Access Token 에서 User ID 가져오기
-        Authentication authentication = jwtTokenProvider.getAuthentication(requestDto.getAccessToken());
+//        Authentication authentication = jwtTokenProvider.getAuthentication(requestDto.getAccessToken());
+
+
+        /*
+         getUserPk()는 private로 감춰야하지만 authentication의 principle 멤버변수인 userdetailsImpl에 username이 안가져와져서 임시로
+         열어두었다.
+         */
+        String userPk = jwtTokenProvider.getUserPk(requestDto.getAccessToken());
+
 
         // 3. 저장소에서 User ID 를 기반으로 Refresh Token 값 가져옴
-        RefreshToken refreshToken = refreshTokenRepository.findByKey(authentication.getName())
+        RefreshToken refreshToken = refreshTokenRepository.findByKey(userPk)
                 .orElseThrow(() -> new RuntimeException("로그아웃 된 사용자입니다."));
-        log.info("Refresh Token의 authentication객체에 저장된 이름="+authentication.getName());
+        log.info("Refresh Token의 authentication객체에 저장된 이름="+userPk);
 
         // 4. Refresh Token 일치하는지 검사
         if (!refreshToken.getValue().equals(requestDto.getRefreshToken())) {
@@ -118,9 +127,10 @@ public class MemberService {
         }
 
         // 5. 새로운 토큰 생성
-        TokenDto tokenDto = TokenDto.builder()
-                .accessToken(jwtTokenProvider.createAccessToken(authentication.getName()))
-                .build();
+        TokenDto tokenDto = jwtTokenProvider.createToken(userPk);
+//                TokenDto.builder()
+//                .accessToken(jwtTokenProvider.createAccessToken(authentication.getName()))
+//                .build();
 
         // 6. 저장소 정보 업데이트
         RefreshToken newRefreshToken = refreshToken.updateValue(tokenDto.getRefreshToken());

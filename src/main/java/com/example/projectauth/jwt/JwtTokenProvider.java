@@ -6,7 +6,6 @@ import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import jakarta.annotation.PostConstruct;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +15,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
-import org.springframework.web.util.WebUtils;
 
 import java.util.Base64;
 import java.util.Date;
@@ -25,9 +23,9 @@ import java.util.Date;
 @Component
 @Slf4j
 public class JwtTokenProvider {
-    private static final String BEARER_TYPE = "Bearer";
-    private static final long ACCESS_TOKEN_EXPIRE_TIME = 1000L*60*15; //15분
-    private static final long REFRESH_TOKEN_EXPIRE_TIME = 1000L*60*60*24*7; //7일
+    private static final String BEARER_TYPE = "Bearer ";
+    private static final long ACCESS_TOKEN_EXPIRE_TIME = 1000L*60*2; //5분
+    private static final long REFRESH_TOKEN_EXPIRE_TIME = 1000L*60*60*3; //3시간
 
 
     @Value("${security.jwt.token.secret-key}")
@@ -45,31 +43,25 @@ public class JwtTokenProvider {
         secretKey = Base64.getEncoder().encodeToString(secretKey.getBytes());
     }
 
-    // JWT 토큰 생성
-    public String createAccessToken(String userPk) {
-        Claims claims = Jwts.claims().setSubject(userPk); // JWT payload 에 저장되는 정보단위
-        Date now = new Date();
-        Date accessTokenExpiresIn = new Date(now.getTime() + ACCESS_TOKEN_EXPIRE_TIME);
-        return BEARER_TYPE + Jwts.builder()
-                .setClaims(claims) // 정보 저장
-                .setIssuedAt(now)
-                .setExpiration(accessTokenExpiresIn) // set Expire Time
-                .signWith(SignatureAlgorithm.HS256, secretKey) // 사용할 암호화 알고리즘과 signature 에 들어갈 secret 값 세팅
-                .compact();
-    }
+    /*
+    JWT Access 토큰 , Refresh 토큰 생성
+     */
     public TokenDto createToken(String userPk/*,List<String> roles*/) {
-
-        Claims claims = Jwts.claims().setSubject(userPk); // JWT payload 에 저장되는 정보단위
 //        claims.put("roles", roles);
-        log.info("토큰을 만들때 authentication객체의 이름= "+userPk);
+        Claims claims = Jwts.claims().setSubject(userPk); // JWT payload 에 저장되는 정보단위
         Date now = new Date();
         Date accessTokenExpiresIn = new Date(now.getTime() + ACCESS_TOKEN_EXPIRE_TIME);
-        String accessToken = BEARER_TYPE + Jwts.builder()
+        log.info("만료시간= " +accessTokenExpiresIn.getTime());
+        log.info("현재시간= " +now.getTime());
+
+        // Access Token 생성
+        String accessToken = Jwts.builder()
                 .setClaims(claims) // 정보 저장
                 .setIssuedAt(now)
                 .setExpiration(accessTokenExpiresIn) // set Expire Time
                 .signWith(SignatureAlgorithm.HS256, secretKey) // 사용할 암호화 알고리즘과 signature 에 들어갈 secret 값 세팅
                 .compact();
+        log.info("토큰을 만들때 authentication객체의 이름= "+userPk);
 
         // Refresh Token 생성
         String refreshToken = Jwts.builder()
@@ -85,18 +77,18 @@ public class JwtTokenProvider {
                 .build();
     }
     public Authentication getAuthentication(String token) {
+        log.info("authentication을 가져올때 들어가는 이름 ="+this.getUserPk(token));
         UserDetails userDetails = userDetailsService.loadUserByUsername(this.getUserPk(token));
         return new UsernamePasswordAuthenticationToken(userDetails, "", userDetails.getAuthorities());
     }
 
     // 토큰에서 회원 정보 추출
-    private String getUserPk(String token) {
+    public String getUserPk(String token) {
+        log.info("유저 pk(이름)="+Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token).getBody().getSubject());
         return Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token).getBody().getSubject();
     }
     public String resolveToken(HttpServletRequest request) {
-        String token = null;
-        Cookie cookie = WebUtils.getCookie(request, "Authorization");
-        if(cookie != null) {token = cookie.getValue();}
+        String token = request.getHeader("Authorization");
         log.info("ResolveToken 쿠키에 담긴 토큰 ="+ token);
         return token;
     }
@@ -105,6 +97,16 @@ public class JwtTokenProvider {
     public boolean validateToken(String jwtToken) {
         try {
             Jws<Claims> claims = Jwts.parser().setSigningKey(secretKey).parseClaimsJws(jwtToken);
+            log.info("accesss token claims정보"+ claims);
+            return !claims.getBody().getExpiration().before(new Date());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    public boolean validateRefreshToken(String jwtToken) {
+        try {
+            Jws<Claims> claims = Jwts.parser().setSigningKey(refreshKey).parseClaimsJws(jwtToken);
+            log.info("refresh token claims정보"+ claims);
             return !claims.getBody().getExpiration().before(new Date());
         } catch (Exception e) {
             return false;

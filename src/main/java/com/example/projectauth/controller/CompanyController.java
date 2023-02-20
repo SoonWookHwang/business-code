@@ -23,11 +23,10 @@ public class CompanyController {
     public CommonResponse<?> findDataWithParam(@RequestParam HashMap<String,String> paramMap){
         String key = paramMap.keySet().toString();
         String value = paramMap.values().toString();
-        log.info("들어오는값=="+paramMap);
+
         value = value.replaceAll("\\[", "").replaceAll("]", "");
         key = key.replaceAll("\\[", "").replaceAll("]", "");
-        log.info("key값="+key);
-        log.info("value값="+value);
+
 
         return switch (key) {
             case "comName" -> getMethods.findByCompanyName(value);
