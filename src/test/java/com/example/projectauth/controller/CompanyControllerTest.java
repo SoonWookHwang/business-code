@@ -12,13 +12,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+
 class CompanyControllerTest {
 
     @Autowired
     private CompanyService companyService;
-
-    @Autowired
-    private CompanyRepository companyRepository;
 
     private Company company;
 
@@ -52,12 +50,11 @@ class CompanyControllerTest {
                 .address("서울시 영등포구 영등포동 134-12")
                 .settlementMonth("3월")
                 .build();
-        companyRepository.save(company);
     }
 
     @Test
     void findByCompanyName() {
-        Assertions.assertEquals(company.companyToResponsDtoforTest(company),companyService.findByCompanyName("삼성"));
+        Assertions.assertEquals(company.companyToResponsDtoforTest(this.company),companyService.findByCompanyName("삼성"));
 
     }
 
